@@ -16,6 +16,7 @@ var azureOpenAIConfig = configuration.GetSection("AzureOpenAI");
 string modelId = azureOpenAIConfig["ModelId"]??string.Empty;
 string endpoint = azureOpenAIConfig["Endpoint"]?? string.Empty;
 string apiKey = azureOpenAIConfig["ApiKey"] ?? string.Empty;
+IKernelBuilder kernelBuilder = Kernel.CreateBuilder();
 
 await using IMcpClient localMcpClient = await McpClientFactory.CreateAsync(new StdioClientTransport(new()
 {
@@ -24,19 +25,29 @@ await using IMcpClient localMcpClient = await McpClientFactory.CreateAsync(new S
     Command = Path.Combine("..", "..", "..", "..", "MCPServer", "bin", "Debug", "net9.0", "MCPServer.exe")
 }));
 
-
-await using IMcpClient remoteMcpClient = await McpClientFactory.CreateAsync(new SseClientTransport(transportOptions: new SseClientTransportOptions() { Endpoint = new Uri("http://localhost:4949/sse") }), new McpClientOptions() { ClientInfo = new() { Name="MCPHttpServer", Version="1.0.0.0" } });
-
 IList<McpClientTool> localTools = await localMcpClient.ListToolsAsync();
-IList<McpClientTool> remoteTools = await remoteMcpClient.ListToolsAsync();
-
-IKernelBuilder kernelBuilder = Kernel.CreateBuilder();
 #pragma warning disable SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 kernelBuilder.Plugins.AddFromFunctions("LocalTools", localTools.Select(mcpClientTool => mcpClientTool.AsKernelFunction()));
-kernelBuilder.Plugins.AddFromFunctions("RemoteTools", remoteTools.Select(mcpClientTool => mcpClientTool.AsKernelFunction()));
+
+List<IMcpClient> remoteMcpClients = new List<IMcpClient>();
+
+//Get the list of MCPServers from appsettings.json and create a remote MCP client for each server
+var mcpServers = configuration.GetSection("MCPServers").GetChildren();
+foreach (var mcpServer in mcpServers)
+{
+    //Get the server name, version and URL from mcpServer
+    string serverName = mcpServer["Name"] ?? string.Empty;
+    string serverVersion = mcpServer["Version"] ?? string.Empty;
+    string serverUrl = mcpServer["Url"] ?? string.Empty;
+
+    IMcpClient remoteMcpClient = await McpClientFactory.CreateAsync(new SseClientTransport(transportOptions: new SseClientTransportOptions() { Endpoint = new Uri($"{serverUrl}/sse") }), new McpClientOptions() { ClientInfo = new() { Name = serverName, Version = serverVersion } });
+    IList<McpClientTool> remoteTools = await remoteMcpClient.ListToolsAsync();
+    kernelBuilder.Plugins.AddFromFunctions($"{serverName}", remoteTools.Select(mcpClientTool => mcpClientTool.AsKernelFunction()));
+    remoteMcpClients.Add(remoteMcpClient);
+}
+
 #pragma warning restore SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 kernelBuilder.Services.AddAzureOpenAIChatCompletion(modelId, endpoint, apiKey);
-
 Kernel kernel = kernelBuilder.Build();
 
 // Enable automatic function calling
@@ -56,5 +67,11 @@ Console.WriteLine(result);
 prompt = "What is the current stock price for MSFT?";
 result = await kernel.InvokePromptAsync(prompt, new(executionSettings));
 Console.WriteLine(result);
+
+//cleanup remoteMcpClients
+foreach (var remoteMcpClient in remoteMcpClients)
+{
+    await remoteMcpClient.DisposeAsync();
+}
 
 Console.ReadLine();

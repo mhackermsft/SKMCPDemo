@@ -17,7 +17,7 @@ namespace MCPHttpServer
 
             app.MapGet("/", () => $"Hello MCP Server Here! {DateTime.Now}");
             app.MapMcp();
-            app.Run("http://localhost:4949");
+            app.Run();
         }
     }
 
