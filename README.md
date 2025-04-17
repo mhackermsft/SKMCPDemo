@@ -14,14 +14,24 @@ The MCPClient is a C# console application that utilizes Azure Open AI and MCP Se
   },
   "MCPServers": [
     {
-      "Name": "MCPHttpServer",
+      "Type": "stdio",
+      "Name": "playwright",
       "Version": "1.0.0.0",
-      "Url": "https://localhost:7194"
+      "Endpoint": "npx",
+      "Args": [
+        "-y",
+        "@executeautomation/playwright-mcp-server"
+      ],
+      "Headers": {
+        "x-functions-key": ""
+      },
+      "Env": {
+      }
     }
   ]
 }
 ```
-The MCPClient will attempt to start and use the MCPServer locally. It will also attempt to connect to the remote MCP servers listed in the MCPServers section of the appsettings.json configuration.
+The MCPClient will attempt to start and use any of the MCPServers defined in the appsettings.json. It supports both stdio and sse servers.
 
 The MCPServer is a C# Console application that implements a MCP server that simulates tools for getting the current time and weather. This uses the STDIO transport. Both the client and server must be running on the same machine.
 
