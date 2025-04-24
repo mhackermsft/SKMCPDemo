@@ -24,13 +24,6 @@ namespace MCPHttpServer
     [McpServerToolType]
     public static class StockQuote
     {
-        [McpServerTool, Description("Gets the latest price for a stock symbol.")]
-        public static string GetStockQuote(string symbol)
-        {
-            var random = new Random();
-            var amount = random.Next(10000, 60001) / 100.0; // Generate random amount between 100.00 and 600.00
-            return $"${amount:F2}"; // Format as USD with two decimal places
-        }
 
         [McpServerTool, Description("Gets the current time in UTC.")]
         public static string GetTimeInUTC()
