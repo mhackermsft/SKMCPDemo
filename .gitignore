@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 /MCPClient/appsettings.json
 /MCPHttpServer/appsettings.Development.json
+/MCPServerFunction/Properties/ServiceDependencies/MCPServerFunction20250514091355 - Zip Deploy/appInsights1.arm.json
+/MCPServerFunction/Properties/ServiceDependencies/MCPServerFunction20250514091355 - Zip Deploy/storage1.arm.json
+/MCPServerFunction/Properties/serviceDependencies.MCPServerFunction20250514091355 - Zip Deploy.json
