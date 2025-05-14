@@ -8,8 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.4" />
-    <PackageReference Include="ModelContextProtocol" Version="0.1.0-preview.8" />
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.1.0-preview.8" />
+    <PackageReference Include="ModelContextProtocol" Version="0.1.0-preview.13" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.1.0-preview.13" />
   </ItemGroup>
 
 </Project>
