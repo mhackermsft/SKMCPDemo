@@ -2,7 +2,6 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
-using ModelContextProtocol.Protocol.Types;
 using ModelContextProtocol.Server;
 
 namespace MCPServer;

@@ -2,7 +2,6 @@
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using ModelContextProtocol.Client;
-using ModelContextProtocol.Protocol.Transport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
