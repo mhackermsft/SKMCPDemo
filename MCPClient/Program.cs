@@ -4,6 +4,7 @@ using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using ModelContextProtocol.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 #pragma warning disable SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
@@ -46,7 +47,7 @@ foreach (var mcpServer in mcpServers)
     Dictionary<string, string> headers = mcpServer.GetSection("Headers").Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
 
     //Get the Environment variable section and convert it to a Dictionary<string, string>
-    Dictionary<string, string> env = mcpServer.GetSection("Env").Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+    Dictionary<string, string?> env = mcpServer.GetSection("Env").Get<Dictionary<string, string?>>() ?? new Dictionary<string, string?>();
 
     if (type.ToLower() == "stdio")
     {
@@ -96,15 +97,39 @@ AzureOpenAIPromptExecutionSettings executionSettings = new()
 };
 #pragma warning restore SKEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
+//Get ChatCompletionService from Kernel
+var chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+
 // Execute a prompt using the MCP localTools. The AI model will automatically call the appropriate MCP localTools to answer the prompt.
-var prompt = "Navigate to Bing.com and enter 'Semantic Kernel Documentation' into the search box and then press enter.";
-var result = await kernel.InvokePromptAsync(prompt, new(executionSettings));
-Console.WriteLine(result);
+ChatHistory chatHistory = new();
+chatHistory.AddSystemMessage("You are a helpful AI assistant. Be polite and direct");
+while (true)
+{
+    // Set prompt color to yellow
+    Console.ForegroundColor = ConsoleColor.Yellow;
+    Console.Write("Enter prompt (type 'quit' to exit): ");
+    string prompt = Console.ReadLine();
+    Console.ResetColor();
+    if (string.Equals(prompt, "quit", StringComparison.OrdinalIgnoreCase))
+        break;
+    if (string.IsNullOrWhiteSpace(prompt))
+        continue;
+
+    chatHistory.AddUserMessage(prompt);
+
+    // AI output in blue
+    // var result = await kernel.(prompt, new(executionSettings));
+    var result = await chatCompletionService.GetChatMessageContentAsync(chatHistory,executionSettings,kernel);
+    if (result!=null)
+        chatHistory.AddAssistantMessage(result?.Content??string.Empty);
+    Console.ForegroundColor = ConsoleColor.Blue;
+    Console.WriteLine(result?.Content);
+    Console.ResetColor();
+    Console.WriteLine();
+}
 
 //cleanup mcpClients
 foreach (var remoteMcpClient in mcpClients)
 {
     await remoteMcpClient.DisposeAsync();
 }
-
-Console.ReadLine();

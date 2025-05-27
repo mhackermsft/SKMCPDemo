@@ -29,7 +29,7 @@ namespace MCPServerFunction
         public async Task<string> GetWeatherForCity(
             [McpToolTrigger("GetWeatherForCity", "Get the current weather for the specified city")] ToolInvocationContext context,
             [McpToolProperty("city", "string", "Name of the city")] string city,
-            [McpToolProperty("state", "string", "Optional name of the state, empty if no state available")] string state
+            [McpToolProperty("state", "string", "Optional full name of the state and not the abbreviation; empty if no state available")] string state
 
         )
         {
@@ -41,7 +41,6 @@ namespace MCPServerFunction
 
             try
             {
-                // Use a static HttpClient instance to avoid socket exhaustion
                 using (HttpClient client = new HttpClient())
                 {
                     // Get geocoding data
