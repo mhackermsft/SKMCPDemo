@@ -1,9 +1,11 @@
 using MCPServerFunction.Models;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Extensions.Mcp;
 using Microsoft.Extensions.Logging;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -17,6 +19,97 @@ namespace MCPServerFunction
         {
             _logger = logger;
         }
+
+
+        [Function(nameof(GetWebInstantAnswer))]
+        public async Task<string> GetWebInstantAnswer([McpToolTrigger("GetWebInstantAnswer", "Get an instant answer from the web based on the supplied query.")] ToolInvocationContext context,
+            [McpToolProperty("query", "string", "Question to search for an instant answer")] string query)
+        {
+            _logger.LogInformation($"GetWebInstantAnswer called with prompt: {query}");
+
+
+            string url = $"https://api.duckduckgo.com/?q={Uri.EscapeDataString(query)}&format=json&no_redirect=1";
+
+            using HttpClient client = new HttpClient();
+            try
+            {
+                string response = await client.GetStringAsync(url);
+                using JsonDocument doc = JsonDocument.Parse(response);
+                JsonElement root = doc.RootElement;
+
+                if (root.TryGetProperty("AbstractText", out JsonElement abstractText) && !string.IsNullOrWhiteSpace(abstractText.GetString()))
+                {
+                    return "Result: " + abstractText.GetString();
+                }
+                else
+                {
+                    return "No direct answer found. Try a web search.";
+                }
+            }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error fetching instant answer from the web.");
+                return "Error: Could not retrieve data from the web. Please try again later.";
+            }
+        }
+
+        [Function(nameof(SearchTheWebForSites))]
+        public async Task<string> SearchTheWebForSites([McpToolTrigger("SearchTheWebForSites", "Search the Internet (web) for web sites that have content based on the supplied query.")] ToolInvocationContext context,
+            [McpToolProperty("query", "string", "keyword search query")] string query)
+        {
+            string results = string.Empty;
+            _logger.LogInformation($"SearchTheWebForSites called with prompt: {query}");
+
+            // https://brave.com/search/api/
+            string apiKey = Environment.GetEnvironmentVariable("BraveSearchApiKey")??string.Empty;
+            string url = $"https://api.search.brave.com/res/v1/web/search?q={Uri.EscapeDataString(query)}";
+
+            var handler = new HttpClientHandler
+            {
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            };
+            using HttpClient client = new HttpClient(handler);
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.DefaultRequestHeaders.Add("X-Subscription-Token", apiKey);
+
+            try
+            {
+                HttpResponseMessage response = await client.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                string json = await response.Content.ReadAsStringAsync();
+                using JsonDocument doc = JsonDocument.Parse(json);
+                JsonElement root = doc.RootElement;
+
+                results ="Top Results:\n";
+                foreach (var result in root.GetProperty("web").GetProperty("results").EnumerateArray())
+                {
+                    results+=$"- {result.GetProperty("title").GetString()}]\n";
+                    results += Environment.NewLine + $"  {result.GetProperty("url").GetString()}\n";
+                }
+                return results; 
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error searching the web for sites. {ex.Message}");
+                return "SearchTheWebForSites error. unable to get search results.";
+            }
+        }
+
+        [Function(nameof(GetStringFromURL))]
+        public string GetStringFromURL([McpToolTrigger("GetStringFromURL", "Gets string content from supplied URL")] ToolInvocationContext context,
+            [McpToolProperty("url", "string", "URL to fetch content from")] string url)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                HttpResponseMessage response = client.GetAsync(url).Result;
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation($"GetStringFromURL called with URL: {url}");
+                    return response.Content.ReadAsStringAsync().Result;
+                }
+                return $"Could not retrieve data from {url}. Error {response.StatusCode}. Is there another URL to try?";
+            }
+        } 
 
         [Function(nameof(GetDateTimeUTCString))]
         public string GetDateTimeUTCString([McpToolTrigger("GetDateTimeUTCString","Get the current date and time in UTC string format")] ToolInvocationContext context)

@@ -14,6 +14,9 @@ IConfiguration configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .Build();
 
+//Get SystemPrompt from appsettings.json
+string systemPrompt = configuration["SystemPrompt"] ?? string.Empty;
+
 var azureOpenAIConfig = configuration.GetSection("AzureOpenAI");
 string modelId = azureOpenAIConfig["ModelId"]??string.Empty;
 string endpoint = azureOpenAIConfig["Endpoint"]?? string.Empty;
@@ -102,7 +105,7 @@ var chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
 
 // Execute a prompt using the MCP localTools. The AI model will automatically call the appropriate MCP localTools to answer the prompt.
 ChatHistory chatHistory = new();
-chatHistory.AddSystemMessage("You are a helpful AI assistant. Be polite and direct");
+chatHistory.AddSystemMessage(systemPrompt);
 while (true)
 {
     // Set prompt color to yellow
